@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Color Code Cabling Match Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      padding: 20px;
+      text-align: center;
+    }
+    #game {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    .pin-row {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+      gap: 8px;
+    }
+    .pin-slot, .color-option {
+      width: 40px;
+      height: 40px;
+      border: 2px solid #444;
+      border-radius: 5px;
+      background: #f8f9fc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .pin-slot.filled {
+      border-style: solid;
+    }
+    .color-options {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .color-option {
+      flex-direction: column;
+    }
+    .correct {
+      background-color: #d4edda !important;
+      border-color: #28a745 !important;
+    }
+    .wrong {
+      background-color: #f8d7da !important;
+      border-color: #dc3545 !important;
+    }
+    #feedback {
+      margin-top: 15px;
+      font-size: 1.1rem;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <h2 id="title">🎨 Pick the Colors to Match TIA/EIA-568B</h2>
+    <p id="instructions">Click the color options in the correct order and fill the 8 pins.</p>
+
+    <div class="pin-row" id="pinRow"></div>
+    <div class="color-options" id="colorOptions"></div>
+
+    <p id="feedback"></p>
+    <button onclick="checkAnswer()">Check Answer</button>
+    <button onclick="resetGame()">Reset</button>
+  </div>
+
+  <script>
+    const standards = {
+      B: [
+        "white/orange", "orange",
+        "white/green", "blue",
+        "white/blue", "green",
+        "white/brown", "brown"
+      ],
+      A: [
+        "white/green", "green",
+        "white/orange", "blue",
+        "white/blue", "orange",
+        "white/brown", "brown"
+      ]
+    };
+
+    let currentStandard = "B";
+    let completedA = false;
+    let completedB = false;
+
+    const colors = {
+      "white/green": { type: "stripe", left: "#ffffff", right: "#008000" },
+      "green": { type: "solid", color: "#008000" },
+      "white/orange": { type: "stripe", left: "#ffffff", right: "#ff6600" },
+      "orange": { type: "solid", color: "#ff6600" },
+      "white/blue": { type: "stripe", left: "#ffffff", right: "#0066cc" },
+      "blue": { type: "solid", color: "#0066cc" },
+      "white/brown": { type: "stripe", left: "#ffffff", right: "#8B4513" },
+      "brown": { type: "solid", color: "#8B4513" }
+    };
+
+    const pinRow = document.getElementById("pinRow");
+    const colorOptions = document.getElementById("colorOptions");
+    const feedback = document.getElementById("feedback");
+    const title = document.getElementById("title");
+    const instructions = document.getElementById("instructions");
+
+    let selectedColors = [];
+
+    function resetGame() {
+      selectedColors = [];
+      feedback.textContent = "";
+      pinRow.innerHTML = "";
+      colorOptions.innerHTML = "";
+
+      for (let i = 0; i < 8; i++) {
+        const pin = document.createElement("div");
+        pin.className = "pin-slot";
+        pinRow.appendChild(pin);
+      }
+
+      const colorNames = Object.keys(colors);
+      const shuffled = [...colorNames].sort(() => 0.5 - Math.random());
+
+      shuffled.forEach(color => {
+        const box = document.createElement("div");
+        box.className = "color-option";
+
+        const style = colors[color];
+        if (style.type === "solid") {
+          box.style.background = style.color;
+        } else {
+          box.style.background = `linear-gradient(to right, ${style.left} 50%, ${style.right} 50%)`;
+        }
+
+        box.onclick = () => selectColor(color);
+        colorOptions.appendChild(box);
+      });
+
+      updateHeader();
+    }
+
+    function selectColor(color) {
+      if (selectedColors.length >= 8) return;
+      selectedColors.push(color);
+
+      const pin = pinRow.children[selectedColors.length - 1];
+      pin.classList.add("filled");
+
+      const style = colors[color];
+      if (style.type === "solid") {
+        pin.style.background = style.color;
+      } else {
+        pin.style.background = `linear-gradient(to right, ${style.left} 50%, ${style.right} 50%)`;
+      }
+
+      pin.title = color;
+    }
+
+    function checkAnswer() {
+      if (selectedColors.length !== 8) {
+        feedback.textContent = "Please select 8 colors.";
+        return;
+      }
+
+      let correct = true;
+      for (let i = 0; i < 8; i++) {
+        if (selectedColors[i] !== standards[currentStandard][i]) {
+          pinRow.children[i].classList.add("wrong");
+          correct = false;
+        } else {
+          pinRow.children[i].classList.add("correct");
+        }
+      }
+
+      if (correct) {
+        if (currentStandard === "B") completedB = true;
+        if (currentStandard === "A") completedA = true;
+
+        if (completedA && completedB) {
+          feedback.textContent = "🎉 Great job! You've completed both 568A and 568B!";
+        } else {
+          feedback.textContent = `✅ Correct! Now try TIA/EIA-568${currentStandard === "A" ? "B" : "A"}`;
+          currentStandard = currentStandard === "A" ? "B" : "A";
+        }
+      } else {
+        feedback.textContent = "❌ Incorrect. Try again or reset.";
+      }
+
+      updateHeader();
+    }
+
+    function updateHeader() {
+      title.textContent = `🎨 Pick the Colors to Match TIA/EIA-568${currentStandard}`;
+      instructions.textContent = `Click the color options in the correct order and fill the 8 pins.`;
+    }
+
+    resetGame();
+  </script>
+</body>
+</html>
